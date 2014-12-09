@@ -1,5 +1,6 @@
 package edu.nyu.hps;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 /**
@@ -58,6 +59,12 @@ public class Market {
 
     // Generates 20% randomly
     private void seed() {
+        current_n = 0;
+        current_m = 0;
+        current_d = 0;
+        poisonedAssets = new boolean[N];
+        poisonedVehicles = new boolean[M];
+
         int suspectAsset;
         int suspectVehicle;
         for (int i = 0; i < n / 5; i++) {
@@ -97,6 +104,40 @@ public class Market {
             }
         }
         return 1.0 * numEdges / (current_n + current_m);
+    }
+
+    private ArrayList<Integer> getLocalDensities() {
+        ArrayList<Integer> localDensities = new ArrayList<Integer>();
+        int localDensity = 0;
+        for (int i = 0; i < N; i++) {
+            if (poisonedAssets[i]) {
+                localDensity = 0;
+                for (int j = 0; j < M; j++) {
+                    if (poisonedVehicles[j] && connections[i][j]) {
+                        localDensity++;
+                    }
+                }
+                localDensities.add(localDensity);
+            }
+        }
+        return localDensities;
+    }
+
+    public double getVariance() {
+        ArrayList<Integer> localDensities = getLocalDensities();
+        int sum = 0;
+        for (Integer density : localDensities) {
+            sum += density;
+        }
+        double mean = 1.0 * sum / localDensities.size();
+
+        double variance = 0;
+
+        for (Integer density : localDensities) {
+            variance += (density - mean) * (density - mean);
+        }
+
+        return variance;
     }
 
     // greedy climb
@@ -169,21 +210,23 @@ public class Market {
         }
 
         // stop condition
-        return current_m == m && current_n == n;
+        return current_m != m || current_n != n;
     }
 
-    public void solve() {
+    public double solve() {
         seed();
         while (climb()) {}
-        PRINT_LOCAL_DENSITIES = true;
-        getPoisonedDensity();
-        System.out.println("Target d: " + d);
+//        PRINT_LOCAL_DENSITIES = true;
+        return getPoisonedDensity();
     }
 
-    public String poisonedVehiclesString() {
-        StringBuilder sb = new StringBuilder(M);
+    public String getPoisonedVehiclesString() {
+        StringBuilder sb = new StringBuilder(2*M - 1);
         for (int i = 0; i < M; i++) {
-            sb.append(poisonedVehicles[i]);
+            if (i != 0) {
+                sb.append(" ");
+            }
+            sb.append(poisonedVehicles[i] ? "1" : "0");
         }
         return sb.toString();
     }
