@@ -15,6 +15,8 @@ public class Market {
 
     private Random random = new Random();
 
+    private boolean PRINT_LOCAL_DENSITIES = false;
+
     public Market(int N, int M, int D, int n, int m, int d) {
         this.N = N;
         this.M = M;
@@ -77,17 +79,93 @@ public class Market {
         }
     }
 
-    private boolean climb() {
-        if (current_n < n) {
-
-        } else if (current_n > n) {
-
+    private double getPoisonedDensity () {
+        int numEdges = 0;
+        int local_density = 0;
+        for (int i = 0; i < N; i++) {
+            if (poisonedAssets[i]) {
+                local_density = 0;
+                for (int j = 0; j < M; j++) {
+                    if (poisonedVehicles[j] && connections[i][j]) {
+                        numEdges++;
+                        local_density++;
+                    }
+                }
+                if (PRINT_LOCAL_DENSITIES) {
+                    System.out.print(local_density + " ");
+                }
+            }
         }
-        
-        if (current_m < m) {
+        return 1.0 * numEdges / (current_n + current_m);
+    }
 
-        } else if (current_m > m) {
+    // greedy climb
+    private boolean climb() {
+        int bestCandidate;
+        double bestDensity, newDensity;
 
+        if (current_n != n) {
+            bestCandidate = -1;
+            bestDensity = 0;
+            if (current_n < n) {
+                for (int i = 0; i < N; i++) {
+                    if (!poisonedAssets[i]) {
+                        addPoisonedAsset(i);
+                        newDensity = getPoisonedDensity();
+                        if (newDensity > bestDensity) {
+                            bestDensity = newDensity;
+                            bestCandidate = i;
+                        }
+                        removePoisonedAsset(i);
+                    }
+                }
+                addPoisonedAsset(bestCandidate);
+            } else if (current_n > n) {
+                for (int i = 0; i < N; i++) {
+                    if (poisonedAssets[i]) {
+                        removePoisonedAsset(i);
+                        newDensity = getPoisonedDensity();
+                        if (newDensity > bestDensity) {
+                            bestDensity = newDensity;
+                            bestCandidate = i;
+                        }
+                        addPoisonedAsset(i);
+                    }
+                }
+                removePoisonedAsset(bestCandidate);
+            }
+        }
+
+        if (current_m != m) {
+            bestCandidate = -1;
+            bestDensity = 0;
+            if (current_m < m) {
+                for (int i = 0; i < M; i++) {
+                    if (!poisonedVehicles[i]) {
+                        addPoisonedVehicle(i);
+                        newDensity = getPoisonedDensity();
+                        if (newDensity > bestDensity) {
+                            bestDensity = newDensity;
+                            bestCandidate = i;
+                        }
+                        removePoisonedVehicle(i);
+                    }
+                }
+                addPoisonedVehicle(bestCandidate);
+            } else if (current_m > m) {
+                for (int i = 0; i < M; i++) {
+                    if (poisonedVehicles[i]) {
+                        removePoisonedVehicle(i);
+                        newDensity = getPoisonedDensity();
+                        if (newDensity > bestDensity) {
+                            bestDensity = newDensity;
+                            bestCandidate = i;
+                        }
+                        addPoisonedVehicle(i);
+                    }
+                }
+                removePoisonedVehicle(bestCandidate);
+            }
         }
 
         // stop condition
@@ -97,6 +175,9 @@ public class Market {
     public void solve() {
         seed();
         while (climb()) {}
+        PRINT_LOCAL_DENSITIES = true;
+        getPoisonedDensity();
+        System.out.println("Target d: " + d);
     }
 
     public String poisonedVehiclesString() {
